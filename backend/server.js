@@ -6,18 +6,25 @@ const cors = require("cors");
 const { google } = require("googleapis");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-const auth = new google.auth.GoogleAuth({
-  keyFile: path.join(
+const authConfig = {
+  scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+};
+
+if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+  authConfig.credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+} else {
+  authConfig.keyFile = path.join(
     __dirname,
     process.env.GOOGLE_APPLICATION_CREDENTIALS
-  ),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-});
+  );
+}
+
+const auth = new google.auth.GoogleAuth(authConfig);
 
 const sheets = google.sheets({
   version: "v4",
@@ -67,6 +74,6 @@ app.get("/api/estado", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor ejecutándose en puerto ${PORT}`);
 });

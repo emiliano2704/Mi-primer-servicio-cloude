@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 function App() {
 	const [productos, setProductos] = useState([]);
 
@@ -8,9 +10,7 @@ function App() {
 	const [error, setError] = useState(false);
 
 	useEffect(() => {
-		fetch(
-			"http://localhost:3000/api/productos"
-		)
+		fetch(`${API_URL}/api/productos`)
 			.then((response) => {
 				if (!response.ok) {
 					throw new Error(
