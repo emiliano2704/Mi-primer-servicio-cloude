@@ -1,0 +1,12 @@
+{
+  "name": "sistema-cloud-cursos",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "test": "node --test backend/*.test.js"
+  },
+  "dependencies": {
+    "googleapis": "^181.0.0"
+  }
+}

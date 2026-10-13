@@ -1,5 +1,9 @@
-backend/node_modules
-frontend/node_modules
-backend/.env
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.netlify/
+.env
+.env.*
+!.env.example
 backend/service-account.json
-frontend/dist
+*.log
