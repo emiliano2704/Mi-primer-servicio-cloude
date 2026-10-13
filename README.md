@@ -1,68 +1,62 @@
 # Aula Cloud — Sistema de cursos
 
-Aplicación de la actividad de Cloud Computing: React + API REST en Node.js (Netlify Functions) + Google Sheets. Permite iniciar sesión, crear, consultar, editar y eliminar cursos. Incluye búsqueda por nombre, filtro por categoría, contador de cursos y validación de formularios.
+Aplicación de Cloud Computing con React, API REST en Node.js y Google Sheets. Incluye login, CRUD real de cursos, búsqueda, filtro, contadores y validación.
 
 ## Arquitectura
 
-Usuario → React (Netlify) → `/api/*` (función Node.js en Netlify) → Google Sheets API → hoja `Cursos`.
+Usuario → React en Netlify → HTTP/Fetch → API Express en Render → Google Sheets API → pestaña `Cursos`.
 
-La cuenta de servicio y la contraseña están solo en variables de entorno del servidor. El navegador recibe un token de sesión con firma HMAC y vencimiento de ocho horas. Este login es adecuado para la práctica, pero no pretende ser un sistema de identidad para varios usuarios.
+El repositorio conserva la estructura `frontend/` y `backend/` que ya usaban los dos servicios. La hoja existente tiene una pestaña nueva `Cursos` con encabezados `ID | Nombre | Categoría | Instructor | Duración | Estado | Descripción | Fecha` y tres cursos de ejemplo. La pestaña de productos original sigue intacta.
 
-## Datos de Google Sheets
+## Configuración de Render (API)
 
-1. En Google Cloud, crea un proyecto, habilita **Google Sheets API** y crea una **cuenta de servicio** con clave JSON.
-2. Crea una hoja de cálculo. Renombra la pestaña a `Cursos`.
-3. Escribe en la primera fila, exactamente y en este orden: `ID | Nombre | Categoría | Instructor | Duración | Estado | Descripción | Fecha`.
-4. Comparte la hoja con el correo `client_email` de la cuenta de servicio, con permiso **Editor**.
-5. Copia el ID de la hoja desde la URL: `https://docs.google.com/spreadsheets/d/ESTE_ID/edit`.
+En el servicio `mi-primer-servicio-cloud-api`:
 
-No subas la clave JSON ni contraseñas a GitHub. Una cuenta de servicio con acceso Editor a esta hoja es suficiente.
+- **Root Directory:** `backend`
+- **Build Command:** `npm install`
+- **Start Command:** `npm start`
+- **GOOGLE_SHEET_ID:** conserva el valor actual que ya usa la API de productos.
+- **GOOGLE_SERVICE_ACCOUNT_JSON:** conserva el JSON privado actual que ya funciona en Render. Si usas `GOOGLE_APPLICATION_CREDENTIALS` con un archivo privado, consérvalo fuera de GitHub.
+- **GOOGLE_SHEET_TAB:** `Cursos` (opcional; este es el valor por defecto).
+- **LOGIN_USER:** el usuario que elijas, por ejemplo `admin`.
+- **LOGIN_PASSWORD:** una contraseña privada elegida por ti.
+- **SESSION_SECRET:** una cadena aleatoria privada de al menos 32 caracteres.
 
-## Variables de entorno de Netlify
+Las variables del login deben configurarse en Render, no en React. No subas el JSON, la contraseña ni el secreto de sesión a GitHub. Después de agregar las variables, vuelve a desplegar Render.
 
-En **Site configuration → Environment variables**, configura:
+## Configuración de Netlify (interfaz)
 
-| Variable | Valor |
-| --- | --- |
-| `GOOGLE_SHEET_ID` | ID de la hoja |
-| `GOOGLE_SHEET_TAB` | `Cursos` |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | Contenido completo de la clave JSON de la cuenta de servicio, en una sola línea |
-| `LOGIN_USER` | Usuario del login |
-| `LOGIN_PASSWORD` | Contraseña privada |
-| `SESSION_SECRET` | Cadena aleatoria larga, de al menos 32 caracteres |
+El sitio existente es `mi-primer-servicio-cloud-emiliano.netlify.app`. El archivo `netlify.toml` fija:
 
-Consulta `.env.example` solo como referencia; sus valores son de muestra.
+- **Base directory:** `frontend`
+- **Build command:** `npm run build`
+- **Publish directory:** `dist`
 
-## Despliegue en Netlify
+Netlify ya tiene `VITE_API_URL`; su valor debe ser `https://mi-primer-servicio-cloud-api.onrender.com`. La URL de la API es pública y no es una credencial. El frontend también utiliza esa URL como valor por defecto.
 
-1. Conecta este repositorio de GitHub con un sitio de Netlify, o cambia el repositorio del sitio que ya tienes.
-2. Selecciona la **raíz del repositorio** como directorio base, sin establecer una subcarpeta. Netlify leerá `netlify.toml`: comando `npm run build`, publicación `frontend/dist` y funciones en `netlify/functions`.
-3. Agrega las seis variables de entorno indicadas arriba y vuelve a desplegar.
-4. Abre la URL pública. Prueba login correcto e incorrecto; crea, consulta, edita y elimina un curso; confirma el cambio en Google Sheets.
-
-Si la interfaz carga pero el login responde con error 500, revisa `LOGIN_USER`, `LOGIN_PASSWORD` y `SESSION_SECRET`. Si entra pero la lista falla, revisa el ID de la hoja, el nombre de la pestaña, la cuenta de servicio y los encabezados.
+Cada cambio de GitHub en `main` inicia los despliegues de Render y Netlify. Comprueba el estado de ambos en sus paneles antes de probar la aplicación.
 
 ## Desarrollo local
 
-Requiere Node.js 20 o superior y Netlify CLI.
+Requiere Node.js 20 o superior.
 
 ```bash
-npm install
+npm --prefix backend install
 npm --prefix frontend install
-cp .env.example .env
-# Reemplaza los valores de .env con credenciales reales; jamás lo subas.
-npx netlify dev
+# Crea backend/.env a partir de backend/.env.example con tus valores privados.
+npm --prefix backend start
+npm --prefix frontend run dev
 ```
 
-Abre la URL que indique Netlify CLI. El servidor de Vite solo no ejecuta las funciones de Netlify.
+Para desarrollo local, puedes poner `VITE_API_URL=http://localhost:3000` en `frontend/.env.local`. Ambos archivos `.env` están excluidos de Git.
 
 ## API REST
 
-Todas las rutas de cursos requieren `Authorization: Bearer <token>`.
+`POST /api/login` recibe `{"usuario":"...","contrasena":"..."}` y devuelve un token con firma HMAC y vencimiento de ocho horas. Las rutas de cursos requieren `Authorization: Bearer <token>`.
 
 | Método | Ruta | Acción |
 | --- | --- | --- |
-| POST | `/api/login` | Validar usuario y contraseña; obtener token |
+| GET | `/api/estado` | Consultar estado de API |
 | GET | `/api/cursos` | Consultar cursos |
 | POST | `/api/cursos` | Crear curso |
 | PUT | `/api/cursos/:id` | Actualizar curso |
@@ -72,15 +66,15 @@ Ejemplo de curso: `{"nombre":"Fundamentos de React","categoria":"Programación",
 
 ## Verificación y evidencias
 
-Ejecuta `npm test` y `npm run build`. Para el PDF de Moodle captura: repositorio, estructura, Netlify, login correcto e incorrecto, tabla, creación, consulta, edición, eliminación, búsqueda o filtro, respuesta de la API y la hoja de Google Sheets antes y después de un cambio. Incluye las URL públicas del sitio y del repositorio.
+Ejecuta `npm test`, `npm --prefix frontend run lint` y `npm --prefix frontend run build`. Para el PDF de Moodle captura el repositorio, estructura, despliegues, login correcto e incorrecto, tabla, creación, consulta, edición, eliminación, búsqueda o filtro, API y la pestaña `Cursos` de Google Sheets antes y después de un cambio. Incluye la URL de Netlify y la del repositorio.
 
-## Estructura
+## Archivos principales
 
 ```text
-frontend/             Interfaz React
-backend/courses.js    Lectura y escritura en Google Sheets
-backend/auth.js       Login y sesión
-netlify/functions/    Rutas de la API
-netlify.toml          Compilación y redirecciones
+frontend/src/App.jsx  Interfaz React
+backend/server.js      API REST Express para Render
+backend/courses.js     Lectura y escritura en Google Sheets
+backend/auth.js        Login y token de sesión
+netlify.toml           Compilación del frontend en Netlify
 ```
 

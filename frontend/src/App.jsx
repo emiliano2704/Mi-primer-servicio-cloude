@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
-const API = import.meta.env.VITE_API_URL || "";
+const API = import.meta.env.VITE_API_URL || "https://mi-primer-servicio-cloud-api.onrender.com";
 const CATEGORIES = ["Programación", "Diseño", "Negocios", "Idiomas", "Tecnología", "Otro"];
 const EMPTY = { nombre: "", categoria: "Programación", instructor: "", duracion: "", estado: "Publicado", descripcion: "" };
 

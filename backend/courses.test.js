@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createCoursesService, HEADERS, validateCourse } = require("./courses");
 const { login, verifyToken } = require("./auth");
-const { handler } = require("../netlify/functions/api");
+const app = require("./server");
 
 function fakeSheets() {
   const rows = [HEADERS];
@@ -58,21 +58,24 @@ test("la API rechaza acceso anónimo y credenciales incorrectas", async () => {
   process.env.LOGIN_USER = "admin";
   process.env.LOGIN_PASSWORD = "clave-privada";
   process.env.SESSION_SECRET = "secreto-de-prueba";
+  const server = app.listen(0);
   try {
-    const denied = await handler({ path: "/api/cursos", httpMethod: "GET", headers: {} });
-    assert.equal(denied.statusCode, 401);
-    const incorrect = await handler({
-      path: "/api/login", httpMethod: "POST",
+    const base = "http://127.0.0.1:" + server.address().port;
+    const denied = await fetch(base + "/api/cursos");
+    assert.equal(denied.status, 401);
+    const incorrect = await fetch(base + "/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ usuario: "admin", contrasena: "equivocada" }),
     });
-    assert.equal(incorrect.statusCode, 401);
-    const correct = await handler({
-      path: "/api/login", httpMethod: "POST",
+    assert.equal(incorrect.status, 401);
+    const correct = await fetch(base + "/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ usuario: "admin", contrasena: "clave-privada" }),
     });
-    assert.equal(correct.statusCode, 200);
-    assert.ok(JSON.parse(correct.body).token);
+    assert.equal(correct.status, 200);
+    assert.ok((await correct.json()).token);
   } finally {
+    server.close();
     for (const [key, value] of Object.entries(previous)) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
