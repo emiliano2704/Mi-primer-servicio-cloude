@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Assistant from "./Assistant";
 import "./App.css";
 
 const API = import.meta.env.VITE_API_URL || "https://mi-primer-servicio-cloud-api.onrender.com";
@@ -83,6 +84,7 @@ function CourseForm({ initial, onClose, onSave, busy }) {
 }
 
 function Dashboard({ token, username, onLogout }) {
+  const [view, setView] = useState("courses");
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -128,12 +130,12 @@ function Dashboard({ token, username, onLogout }) {
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="side-brand"><span className="brand-symbol">A</span><span>AULA<span className="brand-light">CLOUD</span><small>GESTIÓN DE CURSOS</small></span></div>
-      <nav aria-label="Navegación principal"><div className="side-label">ESPACIO DE TRABAJO</div><div className="nav-active">▣ <span>Cursos</span></div></nav>
+      <nav aria-label="Navegación principal"><div className="side-label">ESPACIO DE TRABAJO</div><button className={view === "courses" ? "nav-active" : "nav-link"} onClick={() => setView("courses")} aria-current={view === "courses" ? "page" : undefined} aria-label="Cursos"><span aria-hidden="true">▣</span> <span>Cursos</span></button><button className={view === "assistant" ? "nav-active" : "nav-link"} onClick={() => setView("assistant")} aria-current={view === "assistant" ? "page" : undefined} aria-label="Asistente Cloud con IA"><span aria-hidden="true">✦</span> <span>Asistente IA</span></button></nav>
       <div className="side-bottom"><div className="cloud-note">☁ <span>Sincronizado con<br/><strong>Google Sheets</strong></span></div><button className="logout" onClick={onLogout}>↪ &nbsp; Cerrar sesión</button></div>
     </aside>
     <div className="main-area">
-      <header className="topbar"><div>Panel <span>/</span> <strong>Cursos</strong></div><div className="topbar-right"><i/> Sistema en línea <span className="avatar" aria-label={"Sesión de " + username}>{username.slice(0, 1).toUpperCase()}</span></div></header>
-      <main className="dashboard">
+      <header className="topbar"><div>Panel <span>/</span> <strong>{view === "courses" ? "Cursos" : "Asistente IA"}</strong></div><div className="topbar-right"><i/> Sistema en línea <span className="avatar" aria-label={"Sesión de " + username}>{username.slice(0, 1).toUpperCase()}</span></div></header>
+      {view === "courses" ? <main className="dashboard">
         <div className="page-heading"><div><div className="eyebrow">CENTRO DE APRENDIZAJE</div><h1>Mis cursos<span>.</span></h1><p>Organiza tu oferta educativa desde un solo lugar.</p></div><button className="button primary add-button" onClick={() => setModal("new")}>＋ Nuevo curso</button></div>
         <section className="summary-grid" aria-label="Resumen de cursos">
           <div className="summary-card"><div className="summary-label">TOTAL DE CURSOS</div><strong>{courses.length.toString().padStart(2, "0")}</strong><p>En tu catálogo</p></div>
@@ -149,7 +151,7 @@ function Dashboard({ token, username, onLogout }) {
             <div className="table-wrap"><table><thead><tr><th>CURSO</th><th>CATEGORÍA</th><th>INSTRUCTOR</th><th>DURACIÓN</th><th>ESTADO</th><th>ACCIONES</th></tr></thead><tbody>{filtered.map((course) => <tr key={course.id}><td><strong className="course-name">{course.nombre}</strong>{course.descripcion && <small className="course-description">{course.descripcion}</small>}</td><td><span className="category-pill">{course.categoria}</span></td><td>{course.instructor}</td><td>{course.duracion} h</td><td><span className={"status " + (course.estado === "Publicado" ? "published" : "draft")}>● {course.estado}</span></td><td><div className="row-actions"><button onClick={() => setModal(course)} aria-label={"Editar " + course.nombre} title="Editar">✎</button><button className="danger" onClick={() => remove(course)} disabled={busy} aria-label={"Eliminar " + course.nombre} title="Eliminar">▤</button></div></td></tr>)}</tbody></table></div>}
         </section>
         <footer>Aula Cloud · Sistema de cursos <span>Datos almacenados en Google Sheets</span></footer>
-      </main>
+      </main> : <Assistant api={api} token={token} onLogout={onLogout}/>}
     </div>
     {modal && <CourseForm key={modal === "new" ? "new" : modal.id} initial={modal === "new" ? null : modal} onClose={() => setModal(null)} onSave={save} busy={busy}/>}
   </div>;

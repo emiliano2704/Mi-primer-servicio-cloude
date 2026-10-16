@@ -6,6 +6,7 @@ const cors = require("cors");
 const { google } = require("googleapis");
 const { createCoursesService } = require("./courses");
 const { login, verifyToken } = require("./auth");
+const { answerQuestion, createOpenAIClient, validateQuestion } = require("./assistant");
 
 const app = express();
 app.use(cors());
@@ -40,7 +41,7 @@ function requireSession(request, response, next) {
 }
 
 app.get("/", (_request, response) => response.json({ mensaje: "API de Aula Cloud", estado: "Online" }));
-app.get("/api/estado", (_request, response) => response.json({ estado: "Online", servicio: "Cursos", almacenamiento: "Google Sheets" }));
+app.get("/api/estado", (_request, response) => response.json({ estado: "Online", servicio: "Cursos y Asistente IA", almacenamiento: "Google Sheets" }));
 
 app.post("/api/login", (request, response) => {
   try {
@@ -71,6 +72,38 @@ app.delete("/api/cursos/:id", requireSession, async (request, response) => {
     const removed = await service().remove(request.params.id);
     return removed ? response.json({ mensaje: "Curso eliminado." }) : response.status(404).json({ mensaje: "No se encontró el curso." });
   } catch (error) { return fail(error, response); }
+});
+
+const assistantRequests = new Map();
+app.post("/api/asistente", requireSession, async (request, response) => {
+  try {
+    const question = validateQuestion(request.body?.pregunta);
+    const client = createOpenAIClient();
+    if (!client) return response.status(503).json({ mensaje: "El asistente aún no tiene configurada la clave de OpenAI en Render." });
+
+    const now = Date.now();
+    const key = request.ip;
+    const recent = (assistantRequests.get(key) || []).filter((time) => now - time < 60000);
+    if (recent.length >= 8) return response.status(429).json({ mensaje: "Espera un minuto antes de hacer más consultas." });
+    recent.push(now);
+    assistantRequests.set(key, recent);
+    if (assistantRequests.size > 1000) {
+      for (const [address, times] of assistantRequests) {
+        if (times.every((time) => now - time >= 60000)) assistantRequests.delete(address);
+      }
+    }
+
+    return response.json(await answerQuestion(question, { listCourses: () => service().list(), client }));
+  } catch (error) {
+    if (/^(Escribe una pregunta|La pregunta|El catálogo supera)/.test(error.message)) {
+      return response.status(400).json({ mensaje: error.message });
+    }
+    if ([401, 429].includes(error.status)) {
+      return response.status(503).json({ mensaje: "OpenAI rechazó la consulta. Revisa la clave y el saldo de la API en OpenAI Platform." });
+    }
+    console.error("Error del asistente:", error.name, error.status || "", error.message);
+    return response.status(503).json({ mensaje: "No se pudo generar la respuesta. Intenta nuevamente en unos momentos." });
+  }
 });
 
 if (require.main === module) {
