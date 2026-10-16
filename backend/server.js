@@ -6,7 +6,7 @@ const cors = require("cors");
 const { google } = require("googleapis");
 const { createCoursesService } = require("./courses");
 const { login, verifyToken } = require("./auth");
-const { answerQuestion, createOpenAIClient, describeOpenAIError, validateQuestion } = require("./assistant");
+const { answerQuestion, createGroqClient, describeGroqError, validateQuestion } = require("./assistant");
 
 const app = express();
 app.use(cors());
@@ -78,8 +78,8 @@ const assistantRequests = new Map();
 app.post("/api/asistente", requireSession, async (request, response) => {
   try {
     const question = validateQuestion(request.body?.pregunta);
-    const client = createOpenAIClient();
-    if (!client) return response.status(503).json({ mensaje: "El asistente aún no tiene configurada la clave de OpenAI en Render." });
+    const client = createGroqClient();
+    if (!client) return response.status(503).json({ mensaje: "El asistente necesita GROQ_API_KEY en las variables de entorno de Render." });
 
     const now = Date.now();
     const key = request.ip;
@@ -98,10 +98,10 @@ app.post("/api/asistente", requireSession, async (request, response) => {
     if (/^(Escribe una pregunta|La pregunta|El catálogo supera)/.test(error.message)) {
       return response.status(400).json({ mensaje: error.message });
     }
-    const openAIMessage = describeOpenAIError(error);
-    if (openAIMessage) {
-      console.error("Error de OpenAI:", { status: error.status, code: error.code || error.error?.code || error.type || error.error?.type || "desconocido" });
-      return response.status(503).json({ mensaje: openAIMessage });
+    const groqMessage = describeGroqError(error);
+    if (groqMessage) {
+      console.error("Error de Groq:", { status: error.status, code: error.code || error.error?.code || error.type || error.error?.type || "desconocido" });
+      return response.status(503).json({ mensaje: groqMessage });
     }
     console.error("Error del asistente:", error.name, error.status || "", error.message);
     return response.status(503).json({ mensaje: "No se pudo generar la respuesta. Intenta nuevamente en unos momentos." });

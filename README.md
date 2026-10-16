@@ -1,10 +1,10 @@
 # Aula Cloud — Cursos y Asistente Cloud con IA
 
-Aplicación de Cloud Computing con React, API REST en Node.js, Google Sheets y OpenAI. Incluye login, CRUD real de cursos, búsqueda, filtro, contadores, validación y un asistente que responde preguntas usando los cursos de la hoja.
+Aplicación de Cloud Computing con React, API REST en Node.js, Google Sheets y Qwen mediante Groq. Incluye login, CRUD real de cursos, búsqueda, filtro, contadores, validación y un asistente que responde preguntas usando los cursos de la hoja.
 
 ## Arquitectura
 
-Usuario → React en Netlify → HTTP/Fetch → API Express en Render → Google Sheets API (pestaña `Cursos`) + OpenAI Responses API → respuesta en React.
+Usuario → React en Netlify → HTTP/Fetch → API Express en Render → Google Sheets API (pestaña `Cursos`) + Qwen en Groq API → respuesta en React.
 
 El repositorio conserva la estructura `frontend/` y `backend/` que ya usaban los dos servicios. La hoja existente tiene una pestaña nueva `Cursos` con encabezados `ID | Nombre | Categoría | Instructor | Duración | Estado | Descripción | Fecha` y tres cursos de ejemplo. La pestaña de productos original sigue intacta.
 
@@ -21,10 +21,12 @@ En el servicio `mi-primer-servicio-cloud-api`:
 - **LOGIN_USER:** el usuario que elijas, por ejemplo `admin`.
 - **LOGIN_PASSWORD:** una contraseña privada elegida por ti.
 - **SESSION_SECRET:** una cadena aleatoria privada de al menos 32 caracteres.
-- **OPENAI_API_KEY:** clave de API creada en OpenAI Platform; es necesaria para el asistente. La suscripción de ChatGPT Plus no incluye el consumo de esta API.
-- **OPENAI_MODEL:** opcional; por defecto `gpt-4.1-mini`.
+- **GROQ_API_KEY:** clave privada del plan gratuito de [Groq Console](https://console.groq.com/keys). Es necesaria para el asistente.
+- **GROQ_MODEL:** opcional; por defecto `qwen/qwen3.8-27b`.
 
-Las variables del login y OpenAI deben configurarse en Render, no en React. No subas el JSON, la contraseña, el secreto de sesión ni la clave de OpenAI a GitHub. Después de agregar `OPENAI_API_KEY`, usa **Save and deploy** en Render. No hace falta configurar la clave en Netlify.
+Las variables del login y Groq deben configurarse en Render, no en React. No subas el JSON, la contraseña, el secreto de sesión ni la clave de Groq a GitHub. Después de agregar `GROQ_API_KEY`, usa **Save and deploy** en Render. No hace falta configurar la clave en Netlify. La variable antigua `OPENAI_API_KEY` ya no se utiliza y puedes eliminarla de Render.
+
+Para activar el asistente sin pagar: crea una cuenta en [Groq Console](https://console.groq.com/), mantente en el plan **Free**, crea una clave en [API Keys](https://console.groq.com/keys) y pega su valor únicamente en `GROQ_API_KEY` de **Render → servicio de API → Environment**. Después guarda y despliega. El modelo Qwen predeterminado está [incluido en los límites del plan gratuito](https://console.groq.com/docs/rate-limits); el panel de Groq muestra los límites específicos de tu cuenta. No necesitas crear otra clave de OpenAI.
 
 ## Configuración de Netlify (interfaz)
 
@@ -63,11 +65,11 @@ Para desarrollo local, puedes poner `VITE_API_URL=http://localhost:3000` en `fro
 | POST | `/api/cursos` | Crear curso |
 | PUT | `/api/cursos/:id` | Actualizar curso |
 | DELETE | `/api/cursos/:id` | Eliminar curso |
-| POST | `/api/asistente` | Responder una pregunta usando Google Sheets y OpenAI |
+| POST | `/api/asistente` | Responder una pregunta usando Google Sheets y Qwen mediante Groq |
 
 Ejemplo de curso: `{"nombre":"Fundamentos de React","categoria":"Programación","instructor":"Ana Ruiz","duracion":24,"estado":"Publicado","descripcion":"Curso inicial"}`.
 
-El asistente recibe `{"pregunta":"¿Qué cursos de programación hay?"}` y devuelve `{"respuesta":"...","fuente":"Google Sheets · Cursos","cursosConsultados":3}`. Lee la hoja en cada consulta, envía al modelo únicamente los campos públicos de hasta 100 cursos, y limita las respuestas a 350 tokens. Rechaza preguntas vacías o mayores de 500 caracteres y aplica un límite de ocho consultas por minuto. Si falta la clave, devuelve HTTP 503 con una instrucción de configuración; nunca inventa una respuesta local.
+El asistente recibe `{"pregunta":"¿Qué cursos de programación hay?"}` y devuelve `{"respuesta":"...","fuente":"Google Sheets · Cursos","cursosConsultados":3}`. Lee la hoja en cada consulta, envía al modelo únicamente los campos públicos de hasta 100 cursos, y limita las respuestas a 350 tokens. Rechaza preguntas vacías o mayores de 500 caracteres y aplica un límite de ocho consultas por minuto. Si falta la clave, devuelve HTTP 503 con una instrucción de configuración; nunca inventa una respuesta local. El plan gratuito de Groq tiene límites de solicitudes y tokens; consulta los vigentes en [Groq Console](https://console.groq.com/docs/rate-limits). No selecciones una cuenta de pago para esta práctica.
 
 ## Verificación y evidencias
 
@@ -79,7 +81,7 @@ Ejecuta `npm test`, `npm --prefix frontend run lint` y `npm --prefix frontend ru
 frontend/src/App.jsx  Interfaz React
 frontend/src/Assistant.jsx  Vista de preguntas y respuestas
 backend/server.js      API REST Express para Render
-backend/assistant.js   Integración de Google Sheets con OpenAI
+backend/assistant.js   Integración de Google Sheets con Qwen en Groq
 backend/courses.js     Lectura y escritura en Google Sheets
 backend/auth.js        Login y token de sesión
 netlify.toml           Compilación del frontend en Netlify
