@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { answerQuestion, validateQuestion } = require("./assistant");
+const { answerQuestion, describeOpenAIError, validateQuestion } = require("./assistant");
 const { login } = require("./auth");
 const app = require("./server");
 
@@ -34,6 +34,15 @@ test("no inventa una respuesta si el proveedor no devuelve texto", async () => {
     listCourses: async () => [],
     client: { responses: { create: async () => ({ output_text: "" }) } },
   }), /no devolvió una respuesta/);
+});
+
+test("distingue errores de clave, créditos, límites y frecuencia sin revelar secretos", () => {
+  assert.match(describeOpenAIError({ status: 401, message: "Incorrect API key sk-private" }), /clave.*no es válida/i);
+  assert.match(describeOpenAIError({ status: 429, code: "credit_balance_exhausted" }), /créditos disponibles/);
+  assert.match(describeOpenAIError({ status: 429, error: { code: "project_spend_limit_exceeded" } }), /límite de uso o gasto/);
+  assert.match(describeOpenAIError({ status: 429, code: "rate_limit_exceeded" }), /Espera un minuto/);
+  assert.equal(describeOpenAIError({ status: 500 }), null);
+  assert.doesNotMatch(describeOpenAIError({ status: 401, message: "Incorrect API key sk-private" }), /sk-private/);
 });
 
 test("la ruta del asistente exige login y muestra configuración pendiente sin clave", async () => {

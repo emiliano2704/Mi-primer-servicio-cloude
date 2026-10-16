@@ -47,8 +47,24 @@ async function answerQuestion(questionInput, { listCourses, client, model = proc
 }
 
 function createOpenAIClient(apiKey = process.env.OPENAI_API_KEY) {
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey, timeout: 25000, maxRetries: 1 });
+  const key = typeof apiKey === "string" ? apiKey.trim() : "";
+  if (!key) return null;
+  return new OpenAI({ apiKey: key, timeout: 25000, maxRetries: 1 });
 }
 
-module.exports = { answerQuestion, createOpenAIClient, validateQuestion, catalogContext };
+function describeOpenAIError(error) {
+  const code = error.code || error.error?.code || error.type || error.error?.type;
+  if (error.status === 401) return "La clave de OpenAI API no es válida. Revisa OPENAI_API_KEY en Render y crea una nueva clave en OpenAI Platform si hace falta.";
+  if (["credit_balance_exhausted", "insufficient_quota"].includes(code)) {
+    return "La cuenta de OpenAI API no tiene créditos disponibles. Revisa el saldo y agrega créditos en OpenAI Platform.";
+  }
+  if (["organization_spend_limit_exceeded", "project_spend_limit_exceeded", "organization_usage_limit_exceeded"].includes(code)) {
+    return "La cuenta o el proyecto de OpenAI API alcanzó un límite de uso o gasto. Revisa los límites en OpenAI Platform.";
+  }
+  if (error.status === 429) return "OpenAI limitó la consulta. Espera un minuto y vuelve a intentar; si continúa, revisa el saldo y los límites de la API.";
+  if (error.status === 403) return "La clave de OpenAI API no tiene permiso para este modelo. Revisa el proyecto y OPENAI_MODEL en Render.";
+  if (error.status === 404 || code === "model_not_found") return "El modelo de OpenAI configurado no está disponible. Revisa OPENAI_MODEL en Render.";
+  return null;
+}
+
+module.exports = { answerQuestion, createOpenAIClient, describeOpenAIError, validateQuestion, catalogContext };

@@ -6,7 +6,7 @@ const cors = require("cors");
 const { google } = require("googleapis");
 const { createCoursesService } = require("./courses");
 const { login, verifyToken } = require("./auth");
-const { answerQuestion, createOpenAIClient, validateQuestion } = require("./assistant");
+const { answerQuestion, createOpenAIClient, describeOpenAIError, validateQuestion } = require("./assistant");
 
 const app = express();
 app.use(cors());
@@ -98,8 +98,10 @@ app.post("/api/asistente", requireSession, async (request, response) => {
     if (/^(Escribe una pregunta|La pregunta|El catálogo supera)/.test(error.message)) {
       return response.status(400).json({ mensaje: error.message });
     }
-    if ([401, 429].includes(error.status)) {
-      return response.status(503).json({ mensaje: "OpenAI rechazó la consulta. Revisa la clave y el saldo de la API en OpenAI Platform." });
+    const openAIMessage = describeOpenAIError(error);
+    if (openAIMessage) {
+      console.error("Error de OpenAI:", { status: error.status, code: error.code || error.error?.code || error.type || error.error?.type || "desconocido" });
+      return response.status(503).json({ mensaje: openAIMessage });
     }
     console.error("Error del asistente:", error.name, error.status || "", error.message);
     return response.status(503).json({ mensaje: "No se pudo generar la respuesta. Intenta nuevamente en unos momentos." });
